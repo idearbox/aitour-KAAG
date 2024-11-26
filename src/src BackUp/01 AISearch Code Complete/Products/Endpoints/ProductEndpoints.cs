@@ -93,7 +93,7 @@ public static class ProductEndpoints
             .WithName("SearchAllProducts")
             .Produces<List<Product>>(StatusCodes.Status200OK);
 
-        #region AI Search Endpoint
+        #region AI 검색 Endpoint
         routes.MapGet("/api/aisearch/{search}",
             async (string search, ProductDataContext db, MemoryContext mc) =>
             {
