@@ -71,6 +71,7 @@ public static class ProductEndpoints
         .Produces<Product>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
+        #region DB 검색
         group.MapGet("/search/{search}", async (string search, ProductDataContext db) =>
         {
             var stopwatch = new Stopwatch();
@@ -92,6 +93,7 @@ public static class ProductEndpoints
         })
             .WithName("SearchAllProducts")
             .Produces<List<Product>>(StatusCodes.Status200OK);
+        #endregion
 
         #region AI 검색 Endpoint
         routes.MapGet("/api/aisearch/{search}",
