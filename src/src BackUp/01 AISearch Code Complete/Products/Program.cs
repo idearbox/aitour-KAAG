@@ -28,6 +28,7 @@ app.MapProductEndpoints();
 
 app.UseStaticFiles();
 
+
 app.CreateDbIfNotExists();
 
 // init semantic memory
