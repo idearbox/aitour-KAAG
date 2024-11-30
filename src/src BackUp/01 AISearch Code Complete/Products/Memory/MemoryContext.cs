@@ -86,7 +86,8 @@ public class MemoryContext
         var responseText = "";
 
         //1..vector database 에서 유사 상품 조회
-        var memorySearchResult = await _memory.SearchAsync(MemoryCollectionName, search).FirstOrDefaultAsync();
+        //var memorySearchResult = await _memory.SearchAsync(MemoryCollectionName, search).FirstOrDefaultAsync();
+        var memorySearchResult = await _memory.SearchAsync(MemoryCollectionName, search, 3).FirstOrDefaultAsync();
         if (memorySearchResult != null && memorySearchResult.Relevance > 0.6)
         {
             // product found, search the db for the product details
@@ -106,15 +107,15 @@ public class MemoryContext
             responseText = result[^1].Content;
             _chatHistory.AddAssistantMessage(responseText);
         }
-        else
+        #region 2..생성형 응답 구성, chat history 구성
+        _chatHistory.Clear();
+        //2..생성형 응답 구성, chat history 구성////            and response in korean
+        string p = @$"  You are an intelligent assistant helping eShop Inc clients with their search about outdoor products.
+                        Use 'you' to refer to the individual asking the questions even if they ask with 'I'.";
+
+        if (firstProduct != null)
         {
-            #region 2..생성형 응답 구성, chat history 구성
-            _chatHistory.Clear();
-            //2..생성형 응답 구성, chat history 구성////            and response in korean
-            string p = @$"
-                    You are an intelligent assistant helping eShop Inc clients with their search about outdoor product.
-                    Use 'you' to refer to the individual asking the questions even if they ask with 'I'.
-                    Answer the questions using only the data provided related to a product in the response below. 
+            p += @$"Answer the questions using only the data provided related to a product in the response below. 
                     Do not include the product id.
                     Do not return markdown format. Do not return HTML format.
                     If you cannot answer using the information below, say you don't know. 
@@ -128,19 +129,30 @@ public class MemoryContext
                     product name: {firstProduct.Name}
                     product description: {firstProduct.Description}
                     product price: {firstProduct.Price}
-                    +++++
-            ";
-            _chatHistory.AddUserMessage(p);
-            var resultPromt = await _chat.GetChatMessageContentsAsync(_chatHistory);
-            responseText = resultPromt[0].Content;
-            #endregion
+                    +++++";
         }
+        else
+        {
+            p += @$"If no products are found, respond in a polite, encouraging, and engaging manner. 
+                    Add a little humor or emojis to keep the response friendly and approachable.
+            
+                    Generate a response for when no products match the search. For example:
+                    'Hmm, it seems we don't have what you're looking for right now! 🤔
+                     Why not try searching for something else? 
+                     Or tell me more about what you need, and I can assist you better! 🙌'";
+        }
+
+        _chatHistory.AddUserMessage(p);
+        var resultPromt = await _chat.GetChatMessageContentsAsync(_chatHistory);
+        responseText = resultPromt[0].Content;
+        #endregion
+
 
         //3..결과 반환 
         return new SearchResponse
         {
             Products = firstProduct == null ? [new Product()] : [firstProduct],
-            Response = responseText+"..done"
+            Response = responseText + "..done"
         };
     }
 }
