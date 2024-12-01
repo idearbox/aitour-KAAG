@@ -1,4 +1,6 @@
 ﻿@page "/search"
+@using Microsoft.AspNetCore.Html
+@using System.Net
 
 @inject Store.Services.ProductService ProductService
 @inject IConfiguration Configuration
@@ -15,12 +17,13 @@
     <label for="search">Type your question:</label>
     <div class="input-group">
         <input css type="text" id="search" class="form-control" @bind="searchTerm" />
-    </div>
+    </div><br />
     <button id="btnSearchDB" class="btn btn-primary" @onclick="DoSearchDB" type="submit">1..Search DB</button>
     <button id="btnSearchAI" class="btn btn-primary" @onclick="DoSearchAI" type="submit">2..Search AI</button>
 
     <hr />
-    <p class="quote">@aiResponse</p>
+    @* <p class="quote">@aiResponse</p> *@
+    @((MarkupString)aiResponse)
 
     @* Uncomment this to show elapsed time *@
     @* <p class="smallquote">Elapsed Time: [@elapsedTime]</p> *@
@@ -58,6 +61,7 @@ else
 }
 
 @code {
+
     private string searchTerm = "";
     private List<DataEntities.Product>? products;
     private string aiResponse = "";
@@ -66,7 +70,7 @@ else
     private async Task DoSearchDB(MouseEventArgs e)
     {
         await Task.Delay(500);
-        var response = await ProductService.Search(searchTerm, false);
+        var response = await ProductService.SearchDB(searchTerm);
         aiResponse = response.Response;
         products = response.Products;
         elapsedTime = response.ElapsedTime.ToString();
@@ -75,8 +79,10 @@ else
     private async Task DoSearchAI(MouseEventArgs e)
     {
         await Task.Delay(500);
-        var response = await ProductService.Search(searchTerm, true);
+        var response = await ProductService.SearchAI(searchTerm);
         aiResponse = response.Response;
+
+        aiResponse=aiResponse.Replace("\n\r", "<br>");
         products = response.Products;
         elapsedTime = response.ElapsedTime.ToString();
     }

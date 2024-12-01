@@ -20,9 +20,9 @@ using System;
 
 namespace Products.Memory;
 
-public class MemoryContext
+public class AIMemoryContext
 {
-    const string MemoryCollectionName = "products";
+    const string PRODUCT_COLLECTION_NAME = "products";
 
     private ILogger _logger;
     private IConfiguration _config;
@@ -35,16 +35,16 @@ public class MemoryContext
     {
         _logger = logger;
 
-
         //1.. 설정값 가져오기
         var ai_model1 = config["AZURE_OPENAI_MODEL"];
         var ai_model2 = config["AZURE_OPENAI_ADA02"];
         var endpoint = config["AZURE_OPENAI_ENDPOINT"];
         var apiKey = config["AZURE_OPENAI_APIKEY"];
 
-        //2.. 커널 빌드
+        //2.. Semantic Kernel 생성
         var builderSK = Kernel.CreateBuilder()
                               .AddAzureOpenAIChatCompletion(ai_model1, endpoint, apiKey);
+
         _kernel = builderSK.Build();
         _chat = _kernel.GetRequiredService<IChatCompletionService>();
 
@@ -72,7 +72,7 @@ public class MemoryContext
             var productInfo = $"[{product.Name}] is a product that costs [{product.Price}] and is described as [{product.Description}]";
 
             await _memory.SaveInformationAsync(
-                collection: MemoryCollectionName,
+                collection: PRODUCT_COLLECTION_NAME,
                 text: productInfo,
                 id: product.Id.ToString(),
                 description: product.Description);
@@ -84,10 +84,10 @@ public class MemoryContext
         var response = new SearchResponse();
         Product firstProduct = null;
         var responseText = "";
+        _chatHistory.Clear();
 
-        //1..vector database 에서 유사 상품 조회
-        //var memorySearchResult = await _memory.SearchAsync(MemoryCollectionName, search).FirstOrDefaultAsync();
-        var memorySearchResult = await _memory.SearchAsync(MemoryCollectionName, search, 3).FirstOrDefaultAsync();
+        #region 1..vector database 에서 유사 상품 조회
+        var memorySearchResult = await _memory.SearchAsync(PRODUCT_COLLECTION_NAME, search).FirstOrDefaultAsync();
         if (memorySearchResult != null && memorySearchResult.Relevance > 0.6)
         {
             // product found, search the db for the product details
@@ -95,65 +95,75 @@ public class MemoryContext
             firstProduct = await db.Product.FindAsync(int.Parse(prodId));
             if (firstProduct != null)
             {
-                responseText = $"The product [{firstProduct.Name}] fits with the search criteria [{search}][{memorySearchResult.Relevance.ToString("0.00")}]";
+                responseText = $">>The product [{firstProduct.Name}] fits with the search criteria [{search}][{memorySearchResult.Relevance.ToString("0.00")}] <<\n\r";
             }
         }
 
         if (firstProduct == null)
         {
-            // 상품조회 실패=> ask the AI, chat history 구성
-            _chatHistory.AddUserMessage(search);
-            var result = await _chat.GetChatMessageContentsAsync(_chatHistory);
-            responseText = result[^1].Content;
-            _chatHistory.AddAssistantMessage(responseText);
+            responseText = $">>no product found..<<\n\r";
         }
-        #region 2..생성형 응답 구성, chat history 구성
-        _chatHistory.Clear();
-        //2..생성형 응답 구성, chat history 구성////            and response in korean
-        string p = @$"  You are an intelligent assistant helping eShop Inc clients with their search about outdoor products.
-                        Use 'you' to refer to the individual asking the questions even if they ask with 'I'.";
+        #endregion
 
+        string p;
+        // 상품조회 => ask the AI, chat history 구성
+        #region 2-1..생성형 응답 구성1
+        //p = search;
+        #endregion
+
+        #region 2-2..생성형 응답 구성2
+        p = @$"  You are an intelligent assistant helping eShop Inc clients with their search about outdoor products.
+                        Use 'you' to refer to the individual asking the questions even if they ask with 'I'.";
         if (firstProduct != null)
         {
             p += @$"Answer the questions using only the data provided related to a product in the response below. 
                     Do not include the product id.
                     Do not return markdown format. Do not return HTML format.
-                    If you cannot answer using the information below, say you don't know. 
+
                     As the assistant, you generate descriptions using a funny style and even add some personal flair with appropriate emojis.
 
                     Generate and answer to the question using the information below.
                     Incorporate the question if provided: {search}
                     Always incorporate the product name, description, and price in the response.
                     +++++
-                    product id: {firstProduct.Id}
-                    product name: {firstProduct.Name}
-                    product description: {firstProduct.Description}
-                    product price: {firstProduct.Price}
+product id: {firstProduct.Id}
+            product name: {firstProduct.Name}
+            
                     +++++";
+            //If you cannot answer using the information below, say you don't know. 
+
+            //product id: { firstProduct.Id}
+            //product name: { firstProduct.Name}
+            //product description: { firstProduct.Description}
+            //product price: { firstProduct.Price}
+
         }
         else
         {
             p += @$"If no products are found, respond in a polite, encouraging, and engaging manner. 
                     Add a little humor or emojis to keep the response friendly and approachable.
-            
+
                     Generate a response for when no products match the search. For example:
                     'Hmm, it seems we don't have what you're looking for right now! 🤔
                      Why not try searching for something else? 
                      Or tell me more about what you need, and I can assist you better! 🙌'";
         }
-
-        _chatHistory.AddUserMessage(p);
-        var resultPromt = await _chat.GetChatMessageContentsAsync(_chatHistory);
-        responseText = resultPromt[0].Content;
+        //////p += @" and response in korean.";
         #endregion
 
+        _chatHistory.AddUserMessage(p);
+        var result = await _chat.GetChatMessageContentsAsync(_chatHistory);
+        responseText += result[^1].Content + "\n\r";
 
-        //3..결과 반환 
+        _chatHistory.AddAssistantMessage(responseText);
+
+        #region 3..결과 반환 
         return new SearchResponse
         {
             Products = firstProduct == null ? [new Product()] : [firstProduct],
-            Response = responseText + "..done"
+            Response = responseText + ">>..done..<<"
         };
+        #endregion
     }
 }
 
@@ -163,7 +173,7 @@ public static class Extensions
     {
         using var scope = host.Services.CreateScope();
         var services = scope.ServiceProvider;
-        var context = services.GetRequiredService<MemoryContext>();
+        var context = services.GetRequiredService<AIMemoryContext>();
         context.InitMemoryContext(
             services.GetRequiredService<ILogger<ProductDataContext>>(),
             services.GetRequiredService<IConfiguration>(),

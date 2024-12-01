@@ -22,7 +22,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Include="Memory\MemoryContext.cs" />
+	  <Compile Include="Memory\AIMemoryContext.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

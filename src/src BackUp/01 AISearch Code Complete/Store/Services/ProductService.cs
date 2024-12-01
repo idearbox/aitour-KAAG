@@ -43,21 +43,24 @@ public class ProductService
         return products ?? new List<Product>();
     }
 
-    public async Task<SearchResponse?> Search(string searchTerm, bool useAI)
+    public async Task<SearchResponse?> SearchDB(string searchTerm)
+    {
+        //DB 검색
+        return await SearchCore(searchTerm, "/api/product/searchDB");
+    }
+
+    public async Task<SearchResponse?> SearchAI(string searchTerm)
+    {
+        //AI 검색
+        return await SearchCore(searchTerm, "/api/product/searchAI");
+    }
+
+    public async Task<SearchResponse?> SearchCore(string searchTerm, string uri)
     {
         try
         {
             HttpResponseMessage response;
-            if (!useAI)
-            {
-                //01..일반검색
-                response = await httpClient.GetAsync($"/api/product/search/{searchTerm}");
-            }
-            else
-            {
-                //02..AI검색
-                response = await httpClient.GetAsync($"/api/aisearch/{searchTerm}");
-            }
+            response = await httpClient.GetAsync($"{uri}/{searchTerm}");
             var responseText = await response.Content.ReadAsStringAsync();
 
             _logger.LogInformation($"Http status code: {response.StatusCode}");

@@ -13,6 +13,7 @@ public static class ProductEndpoints
     {
         var group = routes.MapGroup("/api/Product");
 
+        //01..GetAllProducts
         group.MapGet("/", async (ProductDataContext db) =>
         {
             return await db.Product.ToListAsync();
@@ -20,6 +21,7 @@ public static class ProductEndpoints
         .WithName("GetAllProducts")
         .Produces<List<Product>>(StatusCodes.Status200OK);
 
+        //02..GetProductById
         group.MapGet("/{id}", async (int id, ProductDataContext db) =>
         {
             return await db.Product.AsNoTracking()
@@ -32,6 +34,7 @@ public static class ProductEndpoints
         .Produces<Product>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
+        //03..UpdateProduct
         group.MapPut("/{id}", async (int id, Product product, ProductDataContext db) =>
         {
             var affected = await db.Product
@@ -50,6 +53,7 @@ public static class ProductEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status204NoContent);
 
+        //04..CreateProduct
         group.MapPost("/", async (Product product, ProductDataContext db) =>
         {
             db.Product.Add(product);
@@ -59,6 +63,7 @@ public static class ProductEndpoints
         .WithName("CreateProduct")
         .Produces<Product>(StatusCodes.Status201Created);
 
+        //05..DeleteProduct
         group.MapDelete("/{id}", async (int id, ProductDataContext db) =>
         {
             var affected = await db.Product
@@ -71,8 +76,8 @@ public static class ProductEndpoints
         .Produces<Product>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
-        #region DB 검색
-        group.MapGet("/search/{search}", async (string search, ProductDataContext db) =>
+        #region 06..DB 검색
+        group.MapGet("/searchDB/{search}", async (string search, ProductDataContext db) =>
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -91,18 +96,18 @@ public static class ProductEndpoints
             response.ElapsedTime = stopwatch.Elapsed;
             return response;
         })
-            .WithName("SearchAllProducts")
+            .WithName("SearchAllProductsByDB")
             .Produces<List<Product>>(StatusCodes.Status200OK);
         #endregion
 
-        #region AI 검색 Endpoint
-        routes.MapGet("/api/aisearch/{search}",
-            async (string search, ProductDataContext db, MemoryContext mc) =>
+        #region 07..AI 검색 Endpoint
+        group.MapGet("/searchAI/{search}",
+            async (string search, ProductDataContext db, AIMemoryContext mc) =>
             {
                 var result = await mc.Search(search, db);
                 return Results.Ok(result);
             })
-            .WithName("AISearch")
+            .WithName("SearchAllProductsByAI")
             .Produces<SearchResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
         #endregion

@@ -13,9 +13,9 @@ builder.Services.AddSingleton<IConfiguration>(sp =>
 });
 
 // add memory context
-builder.Services.AddSingleton<MemoryContext>(sp =>
+builder.Services.AddSingleton<AIMemoryContext>(sp =>
 {
-    return new MemoryContext();
+    return new AIMemoryContext();
 });
 
 // Add services to the container.
