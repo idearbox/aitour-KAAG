@@ -36,6 +36,8 @@ public class AIMemoryContext
         _logger = logger;
 
         //1.. 설정값 가져오기
+        //"AZURE_OPENAI_MODEL": "gpt-4o",
+        //"AZURE_OPENAI_ADA02": "text-embedding-ada-002"
         var ai_model1 = config["AZURE_OPENAI_MODEL"];
         var ai_model2 = config["AZURE_OPENAI_ADA02"];
         var endpoint = config["AZURE_OPENAI_ENDPOINT"];
@@ -106,57 +108,59 @@ public class AIMemoryContext
         #endregion
 
         #region  2..생성형 응답 구성
-        ////        string p;
-        ////        // 상품조회 => ask the AI, chat history 구성
-        ////        #region 2-1..생성형 응답 구성1
-        ////        p = search;
-        ////        #endregion
+        string p;
+        // 상품조회 => ask the AI, chat history 구성
+        #region 2-1..생성형 응답 구성1
+        //p = search;
+        #endregion
 
-        ////        #region 2-2..생성형 응답 구성2
-        ////////        p = @$"  You are an intelligent assistant helping eShop Inc clients with their search about outdoor products.
-        ////////                        Use 'you' to refer to the individual asking the questions even if they ask with 'I'.";
-        ////////        if (firstProduct != null)
-        ////////        {
-        ////////            p += @$"Answer the questions using only the data provided related to a product in the response below. 
-        ////////                    Do not include the product id.
-        ////////                    Do not return markdown format. Do not return HTML format.
+        #region 2-2..생성형 응답 구성2
+        p = @$"  You are an intelligent assistant helping eShop Inc clients with their search about outdoor products.
+                                Use 'you' to refer to the individual asking the questions even if they ask with 'I'.";
+        if (firstProduct != null)
+        {
+            p += @$"Answer the questions using only the data provided related to a product in the response below. 
+                            always response in korean.
+                            Do not include the product id.
+                            Do not return markdown format. Do not return HTML format.
 
-        ////////                    As the assistant, you generate descriptions using a funny style and even add some personal flair with appropriate emojis.
+                            As the assistant, you generate descriptions using a funny style and even add some personal flair with appropriate emojis.
 
-        ////////                    Generate and answer to the question using the information below.
-        ////////                    Incorporate the question if provided: {search}
-        ////////                    Always incorporate the product name, description, and price in the response.
-        ////////                    +++++
-        ////////product id: {firstProduct.Id}
-        ////////            product name: {firstProduct.Name}
+                            Generate and answer to the question using the information below.
+                            Incorporate the question if provided: {search}
+                            Always incorporate the product name, description, and price in the response.
+                            If you cannot answer using the information below, say you don't know.
+                            
+                            +++++
+                    product id: {firstProduct.Id}
+                    product name: {firstProduct.Name}
+                    product description: {firstProduct.Description}
+                    product price: {firstProduct.Price}
+                            +++++";
+            ////            //product id: { firstProduct.Id}
+            ////            //product name: { firstProduct.Name}
+            ////            //product description: { firstProduct.Description}
+            ////            //product price: { firstProduct.Price}
 
-        ////////                    +++++";
-        ////////            //If you cannot answer using the information below, say you don't know. 
+        }
+        else
+        {
+            p += @$"If no products are found, respond in a polite, encouraging, and engaging manner. 
+                                Add a little humor or emojis to keep the response friendly and approachable.
 
-        ////////            //product id: { firstProduct.Id}
-        ////////            //product name: { firstProduct.Name}
-        ////////            //product description: { firstProduct.Description}
-        ////////            //product price: { firstProduct.Price}
+                                Generate a response for when no products match the search. For example:
+                                'Hmm, it seems we don't have what you're looking for right now! 🤔
+                                 Why not try searching for something else? 
+                                 Or tell me more about what you need, and I can assist you better! 🙌'";
+        }
+        //p += @" and response in korean.";
+        #endregion
 
-        ////////        }
-        ////////        else
-        ////////        {
-        ////////            p += @$"If no products are found, respond in a polite, encouraging, and engaging manner. 
-        ////////                    Add a little humor or emojis to keep the response friendly and approachable.
+        _chatHistory.AddUserMessage(p);
+        var result = await _chat.GetChatMessageContentsAsync(_chatHistory);
+        responseText += result[^1].Content + "\n\r";
 
-        ////////                    Generate a response for when no products match the search. For example:
-        ////////                    'Hmm, it seems we don't have what you're looking for right now! 🤔
-        ////////                     Why not try searching for something else? 
-        ////////                     Or tell me more about what you need, and I can assist you better! 🙌'";
-        ////////        }
-        ////////        //////p += @" and response in korean.";
-        ////        #endregion
-
-        ////        _chatHistory.AddUserMessage(p);
-        ////        var result = await _chat.GetChatMessageContentsAsync(_chatHistory);
-        ////        responseText += result[^1].Content + "\n\r";
-
-        ////        _chatHistory.AddAssistantMessage(responseText); 
+        _chatHistory.AddAssistantMessage(responseText);
         #endregion
 
         #region 3..결과 반환 
