@@ -156,6 +156,7 @@ public class AIMemoryContext
         //p += @" and response in korean.";
         #endregion
 
+        _chatHistory.AddSystemMessage(p);
         _chatHistory.AddUserMessage(p);
         var result = await _chat.GetChatMessageContentsAsync(_chatHistory);
         responseText += result[^1].Content + "\n\r";
